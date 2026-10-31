@@ -6,3 +6,4 @@ contextBridge.exposeInMainWorld("estoqueArquivo", {
   caminho: () => ipcRenderer.invoke("estoque:caminho"),
   salvarRelatorio: (nome, conteudo) => ipcRenderer.invoke("estoque:relatorio", nome, conteudo)
 });
+

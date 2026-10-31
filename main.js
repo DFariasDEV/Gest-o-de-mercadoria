@@ -58,3 +58,4 @@ function criarJanela() {
 app.whenReady().then(criarJanela);
 
 app.on("window-all-closed", () => app.quit());
+
