@@ -1,6 +1,4 @@
-node_modules/
-.env
-.env.local
+﻿node_modules/
 dist/
-build/
-
+GestaoDeEstoque-win32-x64/
+*.exe

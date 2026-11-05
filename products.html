@@ -69,6 +69,111 @@
     #notificacao .alerta-item:hover {
       background-color: #ffe69c;
     }
+
+    /* Aba lateral (histórico): fica por cima, à direita, sem mexer no layout */
+    #painellateral {
+      position: fixed;
+      top: 0;
+      right: 0;
+      height: 100vh;
+      width: 360px;
+      max-width: 92vw;
+      z-index: 800;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      background-color: white;
+      color: #222;
+      border-left: 2px solid #555;
+      box-shadow: -4px 0 12px rgba(0, 0, 0, 0.3);
+      font-family: Arial, Helvetica, sans-serif;
+      transform: translateX(100%);
+      visibility: hidden;
+      transition: transform 0.25s ease, visibility 0.25s;
+    }
+
+    #painellateral.aberto {
+      transform: translateX(0);
+      visibility: visible;
+    }
+
+    #painellateral .pl-topo {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background-color: #333;
+      color: white;
+      padding: 12px 14px;
+    }
+
+    #painellateral .pl-topo h2 {
+      margin: 0;
+      font-size: 17px;
+      overflow-wrap: anywhere;
+    }
+
+    #painellateral #plfechar {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 26px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    #painellateral .pl-abas {
+      display: flex;
+      border-bottom: 2px solid #555;
+    }
+
+    #painellateral .pl-abas button {
+      flex: 1;
+      padding: 10px 6px;
+      background-color: #ecebeb;
+      color: #333;
+      border: none;
+      border-right: 1px solid #bbb;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #painellateral .pl-abas button.ativa {
+      background-color: rgb(62, 172, 62);
+      color: white;
+    }
+
+    #painellateral ul {
+      list-style: none;
+      margin: 0;
+      padding: 0 12px 12px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    #painellateral li {
+      padding: 9px 0;
+      border-bottom: 1px solid #ddd;
+      font-size: 14px;
+    }
+
+    #painellateral li.vazio {
+      color: #777;
+      border-bottom: none;
+    }
+
+    #painellateral .mov-entrada { color: #1e8e1e; font-weight: bold; margin-right: 8px; }
+    #painellateral .mov-baixa { color: #c9302c; font-weight: bold; margin-right: 8px; }
+    #painellateral .mov-status { color: #e69a1f; font-weight: bold; margin-right: 8px; }
+    #painellateral .mov-detalhe { color: #555; }
+
+    /* Janela de senha */
+    #modalsenha { z-index: 1000; }
+    #modalsenha input { display: block; width: 100%; box-sizing: border-box; margin: 4px 0 10px; }
+    #modalsenha p.nota { font-size: 13px; color: #555; margin: 0 0 10px; }
+    #modalsenha #erro-senha { color: #d9534f; font-weight: bold; margin: 0; min-height: 18px; }
   </style>
 </head>
 
@@ -110,6 +215,8 @@
   <div class="barraarquivo">
     <button type="button" onclick="exportar()" class="arquivob">Salvar backup (arquivo)</button>
     <button type="button" onclick="document.getElementById('arquivo').click()" class="arquivob">Carregar backup</button>
+    <button type="button" onclick="gerarRelatorio()" class="arquivob">Gerar relatório</button>
+    <button type="button" onclick="alterarSenha()" class="arquivob">Alterar senha</button>
     <input id="arquivo" type="file" accept=".json,application/json" style="display:none" onchange="importar(event)">
     <span id="msgarquivo"></span>
   </div>
@@ -121,10 +228,10 @@
   <div id="produtosq"></div>
 </div>
 
-<!-- Janela de movimentação (sobreposição) -->
+<!-- Janela de entrada / saída (sobreposição) -->
 <div id="modal" class="modal-fundo">
   <div class="modal-caixa">
-    <h2>Movimentar estoque</h2>
+    <h2 id="modaltitulo">Movimentar estoque</h2>
 
     <p id="modalproduto"></p>
 
@@ -134,25 +241,27 @@
     <p id="erroedicao"></p>
 
     <div class="modal-botoes">
-      <button type="button" class="btn-entrada" onclick="movimentar('entrada')">Entrada</button>
-      <button type="button" class="btn-baixa" onclick="movimentar('baixa')">Baixa</button>
+      <button type="button" id="btnconfirmarmov" class="btn-entrada" onclick="confirmarMovimento()">Confirmar</button>
       <button type="button" class="btn-cancelar" onclick="fecharModal()">Cancelar</button>
     </div>
   </div>
 </div>
 
-<!-- Janela de histórico (sobreposição) -->
-<div id="modalhist" class="modal-fundo">
-  <div class="modal-caixa">
+<!-- Aba lateral: histórico do produto (entradas/saídas e indisponibilidade) -->
+<aside id="painellateral" aria-hidden="true">
+  <div class="pl-topo">
     <h2 id="histtitulo">Histórico</h2>
-
-    <ul id="histlista"></ul>
-
-    <div class="modal-botoes">
-      <button type="button" class="btn-cancelar" onclick="fecharHistorico()">Fechar</button>
-    </div>
+    <button type="button" id="plfechar" onclick="fecharHistorico()" aria-label="Fechar">&times;</button>
   </div>
-</div>
+
+  <div class="pl-abas">
+    <button type="button" id="abamov" class="ativa" onclick="trocarAba('mov')">Entradas e saídas</button>
+    <button type="button" id="abastatus" onclick="trocarAba('status')">Indisponibilidade</button>
+  </div>
+
+  <ul id="listamov"></ul>
+  <ul id="listastatus" style="display:none;"></ul>
+</aside>
 
 <!-- Janela de confirmação de exclusão (sobreposição) -->
 <div id="modalexcluir" class="modal-fundo">
@@ -168,735 +277,38 @@
   </div>
 </div>
 
-<script>
-  var CHAVE = "estoque_produtos";
-
-  // Abaixo deste valor o produto entra na notificação do cabeçalho
-  var LIMITE_ESTOQUE_BAIXO = 50;
-  var timerToast = null;
-
-  // Lista de produtos (dados puros). Os cards são desenhados a partir dela.
-  var produtos = [];
-  var proximoCodigo = 1;
-  var produtoEmEdicao = null;
-  var produtoParaExcluir = null;
-  var apenasIndisponiveis = false; // Estado do filtro de indisponíveis
-
-  var MSG_QTD = "Digite apenas números maiores que zero (ex.: 10 ou 2,5).";
-
-  function agora() {
-    return new Date().toLocaleString("pt-BR");
-  }
-
-  /* ---------- Códigos sequenciais ---------- */
-
-  // 1 -> "000001"
-  function formatarCodigo(n) {
-    return String(n).padStart(6, "0");
-  }
-
-  // Código no formato novo (só números, 6 dígitos ou mais)
-  function codigoSequencial(c) {
-    return /^\d{6,}$/.test(c);
-  }
-
-  // Pega o próximo código do contador
-  function novoCodigo() {
-    if (produtos.length === 0) {
-      proximoCodigo = 1;
-    } else {
-      var maior = 0;
-      produtos.forEach(function (p) {
-        if (codigoSequencial(p.codigo)) {
-          maior = Math.max(maior, Number(p.codigo));
-        }
-      });
-      proximoCodigo = Math.max(proximoCodigo, maior + 1);
-    }
-
-    var c;
-    do {
-      c = formatarCodigo(proximoCodigo);
-      proximoCodigo++;
-    } while (produtos.some(function (p) { return p.codigo === c; }));
-    return c;
-  }
-
-  /* ---------- Salvar e carregar ---------- */
-
-  function mostrarAviso(texto) {
-    document.getElementById("msgarquivo").textContent = texto;
-  }
-
-  function dadosParaSalvar() {
-    return JSON.stringify({ versao: 2, proximo: proximoCodigo, produtos: produtos }, null, 2);
-  }
-
-  // Salva no navegador (localStorage) e, no programa, também no arquivo do PC
-  function salvar() {
-    var texto = dadosParaSalvar();
-    var gravouLocal = true;
-
-    try {
-      localStorage.setItem(CHAVE, texto);
-    } catch (e) {
-      gravouLocal = false;
-    }
-
-    if (window.estoqueArquivo) {
-      window.estoqueArquivo.salvar(texto).then(function (resultado) {
-        if (!resultado || !resultado.ok) {
-          mostrarAviso("Não foi possível salvar o arquivo: " + (resultado && resultado.erro ? resultado.erro : "erro desconhecido"));
-        }
-      }).catch(function () {
-        mostrarAviso("Não foi possível salvar o arquivo.");
-      });
-    } else if (!gravouLocal) {
-      mostrarAviso("Não foi possível salvar no navegador. Use o backup em arquivo.");
-    }
-  }
-
-  function produtoValido(p) {
-    return p && typeof p.codigo === "string" && typeof p.nome === "string" &&
-           typeof p.qtd === "number" && typeof p.unidade === "string" &&
-           Array.isArray(p.historico);
-  }
-
-  // Estoque zerado = indisponível
-  function normalizarProduto(p) {
-    p.indisponivel = !!p.indisponivel;
-
-    if (p.qtd === 0 && !p.indisponivel) {
-      p.indisponivel = true;
-      p.historico.push({
-        data: agora(),
-        tipo: "status",
-        saldo: 0,
-        descricao: "Marcado como indisponível automaticamente (estoque zerado)"
-      });
-    }
-  }
-
-  // Aceita o formato novo ({ proximo, produtos }) e o antigo (lista simples)
-  function aplicarDados(dados) {
-    var lista = Array.isArray(dados) ? dados : (dados && Array.isArray(dados.produtos) ? dados.produtos : []);
-    var proximoSalvo = (dados && !Array.isArray(dados) && Number(dados.proximo) > 0) ? Number(dados.proximo) : 1;
-
-    produtos = lista.filter(produtoValido);
-
-    var maior = 0;
-    produtos.forEach(function (p) {
-      if (codigoSequencial(p.codigo)) {
-        maior = Math.max(maior, Number(p.codigo));
-      }
-    });
-    proximoCodigo = Math.max(proximoSalvo, maior + 1);
-
-    // Códigos antigos (aleatórios) viram sequenciais, na ordem da lista
-    produtos.forEach(function (p) {
-      if (!codigoSequencial(p.codigo)) {
-        p.codigo = novoCodigo();
-      }
-      normalizarProduto(p);
-    });
-  }
-
-  async function iniciar() {
-    var dados = null;
-
-    // 1) No programa: lê o arquivo do PC
-    if (window.estoqueArquivo) {
-      try {
-        var texto = await window.estoqueArquivo.carregar();
-        if (texto) dados = JSON.parse(texto);
-      } catch (e) {
-        dados = null;
-      }
-    }
-
-    // 2) Sem arquivo (ou no navegador): usa o localStorage
-    if (dados === null) {
-      try {
-        var salvo = localStorage.getItem(CHAVE);
-        if (salvo) dados = JSON.parse(salvo);
-      } catch (e) {
-        dados = null;
-      }
-    }
-
-    if (dados) aplicarDados(dados);
-    render();
-
-    if (window.estoqueArquivo) {
-      salvar();
-      window.estoqueArquivo.caminho().then(function (c) {
-        mostrarAviso("Salvamento automático em: " + c);
-      });
-    }
-  }
-
-  /* ---------- Backup em arquivo ---------- */
-
-  function exportar() {
-    var blob = new Blob([dadosParaSalvar()], { type: "application/json" });
-    var url = URL.createObjectURL(blob);
-
-    var a = document.createElement("a");
-    a.href = url;
-    a.download = "estoque-" + new Date().toISOString().slice(0, 10) + ".json";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-
-    mostrarAviso("Backup gerado com " + produtos.length + " produto(s).");
-  }
-
-  function importar(evento) {
-    var input = evento.target;
-    var arquivo = input.files[0];
-    if (!arquivo) return;
-
-    var leitor = new FileReader();
-    leitor.onload = function () {
-      try {
-        var dados = JSON.parse(leitor.result);
-        var lista = Array.isArray(dados) ? dados : (dados ? dados.produtos : null);
-        if (!Array.isArray(lista)) throw new Error("formato");
-
-        var novos = 0;
-        var ignorados = 0;
-        var renumerados = 0;
-
-        lista.forEach(function (p) {
-          if (!produtoValido(p)) {
-            ignorados++;
-            return;
-          }
-
-          // Mesmo código e mesmo nome: já existe, ignora
-          var igual = produtos.some(function (x) { return x.codigo === p.codigo && x.nome === p.nome; });
-          if (igual) {
-            ignorados++;
-            return;
-          }
-
-          // Código em conflito (ou no formato antigo): recebe um código novo
-          var conflito = produtos.some(function (x) { return x.codigo === p.codigo; });
-          if (conflito || !codigoSequencial(p.codigo)) {
-            p.codigo = novoCodigo();
-            renumerados++;
-          }
-
-          normalizarProduto(p);
-          produtos.push(p);
-          novos++;
-        });
-
-        salvar();
-        render();
-
-        mostrarAviso(novos + " produto(s) carregado(s)" +
-          (renumerados ? ", " + renumerados + " com código renumerado" : "") +
-          (ignorados ? ", " + ignorados + " ignorado(s) (inválidos ou já existentes)." : "."));
-      } catch (e) {
-        mostrarAviso("Arquivo inválido. Use um backup gerado por este sistema.");
-      }
-      input.value = "";
-    };
-    leitor.readAsText(arquivo);
-  }
-
-  /* ---------- Notificação de estoque baixo ---------- */
-
-  function atualizarAlerta() {
-    var notificacao = document.getElementById("notificacao");
-    var painel = document.getElementById("painelalerta");
-
-    // Produtos abaixo do limite, do mais crítico para o menos
-    var baixos = produtos
-      .filter(function (p) { return p.qtd < LIMITE_ESTOQUE_BAIXO; })
-      .sort(function (a, b) { return a.qtd - b.qtd; });
-
-    if (baixos.length === 0) {
-      notificacao.style.display = "none";
-      painel.style.display = "none";
-      return;
-    }
-
-    notificacao.style.display = "block";
-    document.getElementById("contadoralerta").textContent = baixos.length;
-
-    painel.innerHTML = "";
-
-    var titulo = document.createElement("strong");
-    titulo.textContent = "Estoque baixo (menos de " + LIMITE_ESTOQUE_BAIXO + ")";
-    painel.appendChild(titulo);
-
-    baixos.forEach(function (p) {
-      var item = document.createElement("button");
-      item.type = "button";
-      item.className = "alerta-item";
-      item.textContent = p.nome + " (" + comUnidade(p.qtd, p.unidade) + ")";
-      item.title = "Clique para localizar o produto";
-      item.onclick = function () {
-        // Tira o filtro de indisponíveis, se estiver ligado, para o card aparecer
-        if (apenasIndisponiveis) alternarFiltroIndisponiveis();
-        document.getElementById("busca").value = p.codigo;
-        filtrar();
-        painel.style.display = "none";
-      };
-      painel.appendChild(item);
-    });
-  }
-
-  function alternarPainelAlerta() {
-    var painel = document.getElementById("painelalerta");
-    document.getElementById("toastalerta").style.display = "none";
-    painel.style.display = painel.style.display === "none" ? "block" : "none";
-  }
-
-  function fecharPainelAlerta() {
-    document.getElementById("painelalerta").style.display = "none";
-  }
-
-  // Aviso curto (5 segundos) quando um produto fica abaixo do limite
-  function mostrarToast(texto) {
-    var t = document.getElementById("toastalerta");
-    t.textContent = texto;
-    t.style.display = "block";
-
-    clearTimeout(timerToast);
-    timerToast = setTimeout(function () {
-      t.style.display = "none";
-    }, 5000);
-  }
-
-  /* ---------- Busca e Filtros ---------- */
-
-  // Tira acentos e deixa em maiúsculas para comparar ("Café" -> "CAFE")
-  function normalizar(texto) {
-    return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-  }
-
-  // Mostra ou esconde produtos com base na busca e no botão de indisponíveis
-  function filtrar() {
-    var termoOriginal = document.getElementById("busca").value.trim();
-    var termo = normalizar(termoOriginal);
-    var cards = document.querySelectorAll("#produtosq .card");
-    var achou = 0;
-
-    cards.forEach(function (c) {
-      var combinaTermo = termo === "" ||
-        normalizar(c.dataset.codigo).indexOf(termo) !== -1 ||
-        normalizar(c.dataset.nome).indexOf(termo) !== -1;
-
-      // Verifica se atende também ao filtro de indisponíveis
-      var indisponivel = c.classList.contains("indisponivel");
-      var combinaIndisponivel = !apenasIndisponiveis || indisponivel;
-
-      var combina = combinaTermo && combinaIndisponivel;
-
-      c.style.display = combina ? "" : "none";
-      if (combina) achou++;
-    });
-
-    var msg = document.getElementById("msgbusca");
-    if ((termo !== "" || apenasIndisponiveis) && achou === 0) {
-      msg.textContent = 'Nenhum produto encontrado.';
-    } else {
-      msg.textContent = "";
-    }
-  }
-
-  function limparBusca() {
-    document.getElementById("busca").value = "";
-    apenasIndisponiveis = false;
-    document.getElementById("btnFiltroIndisponiveis").style.backgroundColor = "";
-    document.getElementById("btnFiltroIndisponiveis").style.color = "";
-    document.getElementById("btnFiltroIndisponiveis").textContent = "Ver indisponíveis";
-    filtrar();
-    document.getElementById("busca").focus();
-  }
-
-  // Ativa ou desativa o filtro de apenas indisponíveis
-  function alternarFiltroIndisponiveis() {
-    apenasIndisponiveis = !apenasIndisponiveis;
-    var btn = document.getElementById("btnFiltroIndisponiveis");
-
-    if (apenasIndisponiveis) {
-      btn.style.backgroundColor = "#d9534f"; // Cor vermelha para indicar que está ativo
-      btn.style.color = "white";
-      btn.textContent = "Ver todos";
-    } else {
-      btn.style.backgroundColor = "";
-      btn.style.color = "";
-      btn.textContent = "Ver indisponíveis";
-    }
-
-    filtrar();
-  }
-
-  /* ---------- Quantidades ---------- */
-
-  // Aceita só números: 10, 2,5 ou 2.5
-  function lerQuantidade(texto) {
-    texto = texto.trim();
-    if (!/^\d+(?:[.,]\d+)?$/.test(texto)) return null;
-
-    var numero = parseFloat(texto.replace(",", "."));
-    if (!(numero > 0)) return null;
-
-    return { numero: numero, unidade: "" };
-  }
-
-  // Mostra o número com vírgula (2.5 -> 2,5)
-  function fmt(n) {
-    return String(n).replace(".", ",");
-  }
-
-  // Número + unidade, ex.: "10 caixas" (produtos antigos podem ter unidade)
-  function comUnidade(n, unidade) {
-    return fmt(n) + (unidade ? " " + unidade : "");
-  }
-
-  // Aplica uma entrada ou baixa ao produto, guarda no histórico e salva
-  function registrar(p, tipo, valor, descricao) {
-    var antes = p.qtd;
-    var novo = tipo === "entrada" ? p.qtd + valor : p.qtd - valor;
-    p.qtd = Math.round(novo * 1000) / 1000;
-
-    p.historico.push({
-      data: agora(),
-      tipo: tipo,
-      valor: valor,
-      saldo: p.qtd,
-      descricao: descricao
-    });
-
-    if (p.qtd === 0 && !p.indisponivel) {
-      // Estoque zerado: fica indisponível automaticamente
-      p.indisponivel = true;
-      p.historico.push({
-        data: agora(),
-        tipo: "status",
-        saldo: p.qtd,
-        descricao: "Marcado como indisponível automaticamente (estoque zerado)"
-      });
-    } else if (tipo === "entrada" && antes === 0 && p.indisponivel) {
-      // Chegou estoque novo: volta a ficar disponível
-      p.indisponivel = false;
-      p.historico.push({
-        data: agora(),
-        tipo: "status",
-        saldo: p.qtd,
-        descricao: "Reativado automaticamente (nova entrada)"
-      });
-    }
-
-    // Notifica quando uma baixa leva o produto para abaixo do limite,
-    // ou quando ele já é cadastrado abaixo do limite
-    var cruzouLimite = (tipo === "baixa" && antes >= LIMITE_ESTOQUE_BAIXO && p.qtd < LIMITE_ESTOQUE_BAIXO) ||
-                       (descricao === "Cadastro inicial" && p.qtd < LIMITE_ESTOQUE_BAIXO);
-
-    salvar();
-    render();
-
-    if (cruzouLimite) {
-      mostrarToast("⚠ " + p.nome + " está com estoque baixo: " + comUnidade(p.qtd, p.unidade));
-    }
-  }
-
-  // Marca ou desmarca o produto como indisponível
-  function alternarDisponibilidade(p) {
-    // Sem estoque, só volta a ficar disponível com uma nova entrada
-    if (p.indisponivel && p.qtd === 0) return;
-
-    p.indisponivel = !p.indisponivel;
-
-    p.historico.push({
-      data: agora(),
-      tipo: "status",
-      saldo: p.qtd,
-      descricao: p.indisponivel ? "Marcado como indisponível" : "Reativado (disponível novamente)"
-    });
-
-    salvar();
-    render();
-  }
-
-  /* ---------- Cards ---------- */
-
-  function criarCard(p) {
-    var card = document.createElement("div");
-    card.className = "card" + (p.indisponivel ? " indisponivel" : "");
-    card.dataset.codigo = p.codigo;
-    card.dataset.nome = p.nome;
-
-    var titulo = document.createElement("h3");
-    titulo.textContent = p.nome;
-
-    var codigoTexto = document.createElement("p");
-    codigoTexto.className = "codigo-produto";
-    codigoTexto.textContent = "Cód: " + p.codigo;
-
-    var selo = document.createElement("span");
-    selo.className = "selo-indisponivel";
-    selo.textContent = "INDISPONÍVEL";
-
-    var quantidade = document.createElement("p");
-    quantidade.textContent = comUnidade(p.qtd, p.unidade);
-
-    var detalhar = document.createElement("button");
-    detalhar.textContent = "Movimentar";
-    // Indisponível com estoque: bloqueado. Com estoque zero: liberado para dar entrada.
-    detalhar.disabled = p.indisponivel && p.qtd > 0;
-    detalhar.onclick = function () {
-      abrirModal(p);
-    };
-
-    var verHistorico = document.createElement("button");
-    verHistorico.textContent = "Histórico";
-    verHistorico.onclick = function () {
-      abrirHistorico(p);
-    };
-
-    var disponibilidade = document.createElement("button");
-    disponibilidade.textContent = p.indisponivel ? "Reativar" : "Indisponível";
-    disponibilidade.className = "disponibilidade";
-    if (p.indisponivel && p.qtd === 0) {
-      disponibilidade.disabled = true;
-      disponibilidade.title = "Dê entrada no estoque para reativar";
-    }
-    disponibilidade.onclick = function () {
-      alternarDisponibilidade(p);
-    };
-
-    var excluir = document.createElement("button");
-    excluir.textContent = "Excluir";
-    excluir.className = "excluir";
-    excluir.onclick = function () {
-      abrirExcluir(p);
-    };
-
-    card.appendChild(titulo);
-    card.appendChild(codigoTexto);
-    card.appendChild(selo);
-    card.appendChild(quantidade);
-    card.appendChild(detalhar);
-    card.appendChild(verHistorico);
-    card.appendChild(disponibilidade);
-    card.appendChild(excluir);
-
-    return card;
-  }
-
-  // Redesenha todos os cards a partir da lista de produtos (mais recentes primeiro)
-  function render() {
-    var area = document.getElementById("produtosq");
-    area.innerHTML = "";
-
-    for (var i = produtos.length - 1; i >= 0; i--) {
-      area.appendChild(criarCard(produtos[i]));
-    }
-
-    atualizarAlerta();
-    filtrar();
-  }
-
-  /* ---------- Cadastro ---------- */
-
-  function adicionar() {
-    var nomedoproduto = document.getElementById("nomedoproduto").value.trim();
-    var quantidadeproduto = document.getElementById("quantidadeproduto").value.trim();
-    var mensagemerro = document.getElementById("mensagemerro");
-
-    if (nomedoproduto === "") {
-      mensagemerro.textContent = "Preencha o nome do produto!";
-      return;
-    }
-
-    var lida = lerQuantidade(quantidadeproduto);
-    if (!lida) {
-      mensagemerro.textContent = MSG_QTD;
-      return;
-    }
-
-    mensagemerro.textContent = "";
-
-    var p = {
-      codigo: novoCodigo(),
-      nome: nomedoproduto,
-      qtd: 0,
-      unidade: lida.unidade,
-      historico: [],
-      indisponivel: false
-    };
-
-    produtos.push(p);
-    registrar(p, "entrada", lida.numero, "Cadastro inicial");
-
-    document.getElementById("nomedoproduto").value = "";
-    document.getElementById("quantidadeproduto").value = "";
-  }
-
-  /* ---------- Movimentar ---------- */
-
-  function abrirModal(p) {
-    produtoEmEdicao = p;
-    document.getElementById("modalproduto").textContent =
-      p.nome + " [" + p.codigo + "] (estoque atual: " + comUnidade(p.qtd, p.unidade) + ")";
-    document.getElementById("movqtd").value = "";
-    document.getElementById("erroedicao").textContent = "";
-    document.getElementById("modal").classList.add("aberto");
-    document.getElementById("movqtd").focus();
-  }
-
-  function fecharModal() {
-    document.getElementById("modal").classList.remove("aberto");
-    produtoEmEdicao = null;
-  }
-
-  function movimentar(tipo) {
-    var texto = document.getElementById("movqtd").value.trim();
-    var erro = document.getElementById("erroedicao");
-
-    var lida = lerQuantidade(texto);
-    if (!lida) {
-      erro.textContent = MSG_QTD;
-      return;
-    }
-
-    var valor = lida.numero;
-
-    if (tipo === "baixa" && valor > produtoEmEdicao.qtd) {
-      erro.textContent = "Estoque insuficiente! Atual: " +
-        comUnidade(produtoEmEdicao.qtd, produtoEmEdicao.unidade) + ".";
-      return;
-    }
-
-    registrar(produtoEmEdicao, tipo, valor, tipo === "entrada" ? "Entrada" : "Baixa");
-    fecharModal();
-  }
-
-  /* ---------- Histórico ---------- */
-
-  function abrirHistorico(p) {
-    document.getElementById("histtitulo").textContent = "Histórico: " + p.nome + " [" + p.codigo + "]";
-
-    var lista = document.getElementById("histlista");
-    lista.innerHTML = "";
-
-    // Do mais recente para o mais antigo
-    for (var i = p.historico.length - 1; i >= 0; i--) {
-      var mov = p.historico[i];
-
-      var item = document.createElement("li");
-
-      var data = document.createElement("strong");
-      data.textContent = mov.data;
-
-      var valor = document.createElement("span");
-      var detalhe = document.createElement("span");
-      detalhe.className = "mov-detalhe";
-
-      if (mov.tipo === "status") {
-        // Mudança de disponibilidade (sem valor movimentado)
-        valor.className = "mov-status";
-        valor.textContent = "●";
-        detalhe.textContent = mov.descricao + " | Saldo: " + comUnidade(mov.saldo, p.unidade);
-      } else {
-        valor.className = mov.tipo === "entrada" ? "mov-entrada" : "mov-baixa";
-        valor.textContent = (mov.tipo === "entrada" ? "+" : "-") + comUnidade(mov.valor, p.unidade);
-        detalhe.textContent = mov.descricao + " | Saldo: " + comUnidade(mov.saldo, p.unidade);
-      }
-
-      item.appendChild(data);
-      item.appendChild(document.createElement("br"));
-      item.appendChild(valor);
-      item.appendChild(detalhe);
-      lista.appendChild(item);
-    }
-
-    document.getElementById("modalhist").classList.add("aberto");
-  }
-
-  function fecharHistorico() {
-    document.getElementById("modalhist").classList.remove("aberto");
-  }
-
-  /* ---------- Excluir ---------- */
-
-  function abrirExcluir(p) {
-    produtoParaExcluir = p;
-    document.getElementById("excluirtexto").textContent =
-      'Tem certeza que deseja excluir "' + p.nome + '"? O histórico dele também será apagado.';
-    document.getElementById("modalexcluir").classList.add("aberto");
-  }
-
-  function fecharExcluir() {
-    document.getElementById("modalexcluir").classList.remove("aberto");
-    produtoParaExcluir = null;
-  }
-
-  function confirmarExclusao() {
-    if (produtoParaExcluir) {
-      var alvo = produtoParaExcluir;
-      produtos = produtos.filter(function (x) { return x !== alvo; });
-      salvar();
-      render();
-    }
-    fecharExcluir();
-  }
-
-  /* ---------- Fechar janelas ---------- */
-
-  // Fecha clicando no fundo escuro ou apertando Esc
-  document.getElementById("modal").addEventListener("click", function (e) {
-    if (e.target === this) fecharModal();
-  });
-
-  document.getElementById("modalhist").addEventListener("click", function (e) {
-    if (e.target === this) fecharHistorico();
-  });
-
-  document.getElementById("modalexcluir").addEventListener("click", function (e) {
-    if (e.target === this) fecharExcluir();
-  });
-
-  // Fecha o painel da notificação clicando fora dele
-  document.addEventListener("click", function (e) {
-    if (!document.getElementById("notificacao").contains(e.target)) {
-      fecharPainelAlerta();
-    }
-  });
-
-  document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") {
-      fecharModal();
-      fecharHistorico();
-      fecharExcluir();
-      fecharPainelAlerta();
-    }
-  });
-
-  /* ---------- Campos de quantidade: só números ---------- */
-
-  function somenteNumeros(e) {
-    e.target.value = e.target.value.replace(/[^\d.,]/g, "");
-  }
-
-  ["quantidadeproduto", "movqtd"].forEach(function (id) {
-    var campo = document.getElementById(id);
-    campo.setAttribute("inputmode", "decimal");
-    campo.addEventListener("input", somenteNumeros);
-  });
-
-  /* ---------- Início ---------- */
-
-  iniciar();
-</script>
+<!-- Janela de senha (sobreposição) -->
+<div id="modalsenha" class="modal-fundo">
+  <div class="modal-caixa">
+    <h2 id="senhatitulo">Senha</h2>
+
+    <p id="senhanota" class="nota"></p>
+
+    <div id="campoatual">
+      <label for="senhaatual" id="labelatual">Senha:</label>
+      <input id="senhaatual" type="password" autocomplete="off">
+    </div>
+
+    <div id="camponova">
+      <label for="senhanova" id="labelnova">Nova senha:</label>
+      <input id="senhanova" type="password" autocomplete="off">
+    </div>
+
+    <div id="camporepetir">
+      <label for="senharepetir">Repita a senha:</label>
+      <input id="senharepetir" type="password" autocomplete="off">
+    </div>
+
+    <p id="erro-senha"></p>
+
+    <div class="modal-botoes">
+      <button type="button" class="btn-entrada" onclick="confirmarSenha()">Confirmar</button>
+      <button type="button" class="btn-cancelar" onclick="fecharSenha()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
 
 </body>
 </html>
-

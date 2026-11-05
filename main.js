@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, shell, dialog } = require("electron");
 const path = require("path");
 const fs = require("fs");
 
@@ -39,6 +39,67 @@ ipcMain.handle("estoque:salvar", (evento, texto) => {
   }
 });
 
+// Relatório geral: o usuário escolhe onde salvar (janela "Salvar como") e o relatório abre em seguida
+ipcMain.handle("estoque:relatorio", async (evento, nome, conteudo) => {
+  try {
+    if (typeof nome !== "string" || typeof conteudo !== "string") {
+      return { ok: false, erro: "dados inválidos" };
+    }
+
+    const nomeSeguro = path.basename(nome).replace(/[^\w.\-]/g, "_");
+    const pastaPadrao = path.join(app.getPath("documents"), "Estoque", "Relatorios");
+    fs.mkdirSync(pastaPadrao, { recursive: true });
+
+    const janela = BrowserWindow.fromWebContents(evento.sender);
+    const escolha = await dialog.showSaveDialog(janela, {
+      title: "Salvar relatório",
+      defaultPath: path.join(pastaPadrao, nomeSeguro),
+      filters: [{ name: "Relatório HTML", extensions: ["html"] }]
+    });
+
+    if (escolha.canceled || !escolha.filePath) {
+      return { ok: false, cancelado: true };
+    }
+
+    fs.writeFileSync(escolha.filePath, conteudo, "utf-8");
+
+    const erroAoAbrir = await shell.openPath(escolha.filePath);
+    if (erroAoAbrir) {
+      shell.showItemInFolder(escolha.filePath);
+    }
+
+    return { ok: true, caminho: escolha.filePath };
+  } catch (e) {
+    return { ok: false, erro: e.message };
+  }
+});
+
+// Backup em JSON: o usuário escolhe onde salvar
+ipcMain.handle("estoque:backup", async (evento, nome, conteudo) => {
+  try {
+    if (typeof nome !== "string" || typeof conteudo !== "string") {
+      return { ok: false, erro: "dados inválidos" };
+    }
+
+    const nomeSeguro = path.basename(nome).replace(/[^\w.\-]/g, "_");
+    const janela = BrowserWindow.fromWebContents(evento.sender);
+    const escolha = await dialog.showSaveDialog(janela, {
+      title: "Salvar backup do estoque",
+      defaultPath: path.join(app.getPath("documents"), nomeSeguro),
+      filters: [{ name: "Backup JSON", extensions: ["json"] }]
+    });
+
+    if (escolha.canceled || !escolha.filePath) {
+      return { ok: false, cancelado: true };
+    }
+
+    fs.writeFileSync(escolha.filePath, conteudo, "utf-8");
+    return { ok: true, caminho: escolha.filePath };
+  } catch (e) {
+    return { ok: false, erro: e.message };
+  }
+});
+
 function criarJanela() {
   const janela = new BrowserWindow({
     width: 1200,
@@ -58,4 +119,3 @@ function criarJanela() {
 app.whenReady().then(criarJanela);
 
 app.on("window-all-closed", () => app.quit());
-
