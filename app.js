@@ -8,6 +8,7 @@ var CHAVE = "estoque_produtos";
   var produtos = [];
   var proximoCodigo = 1;
   var produtoEmEdicao = null;
+  var produtoRenomeando = null;
   var tipoMov = "entrada";
   var produtoNoPainel = null;
   var senhaSalva = null;       // { sal, hash }
@@ -816,6 +817,12 @@ var CHAVE = "estoque_produtos";
       abrirModal(p, "baixa");
     };
 
+    var renomear = document.createElement("button");
+    renomear.textContent = "Editar nome";
+    renomear.onclick = function () {
+      abrirNome(p);
+    };
+
     var verHistorico = document.createElement("button");
     verHistorico.textContent = "Histórico";
     verHistorico.onclick = function () {
@@ -835,6 +842,7 @@ var CHAVE = "estoque_produtos";
     card.appendChild(quantidade);
     card.appendChild(entrada);
     card.appendChild(saida);
+    card.appendChild(renomear);
     card.appendChild(verHistorico);
     card.appendChild(excluir);
 
@@ -1071,6 +1079,50 @@ var CHAVE = "estoque_produtos";
     }
   }
 
+  /* ---------- Editar nome ---------- */
+
+  function abrirNome(p) {
+    produtoRenomeando = p;
+    document.getElementById("nomeatual").textContent = "Produto " + p.codigo + ": " + p.nome;
+    document.getElementById("novonome").value = p.nome;
+    document.getElementById("erronome").textContent = "";
+    document.getElementById("modalnome").classList.add("aberto");
+    document.getElementById("novonome").focus();
+    document.getElementById("novonome").select();
+  }
+
+  function fecharNome() {
+    document.getElementById("modalnome").classList.remove("aberto");
+    produtoRenomeando = null;
+  }
+
+  function confirmarNome() {
+    var p = produtoRenomeando;
+    var erro = document.getElementById("erronome");
+    var novo = document.getElementById("novonome").value.trim();
+
+    if (!p) return;
+
+    if (novo === "") {
+      erro.textContent = "Digite o novo nome do produto.";
+      return;
+    }
+
+    if (novo === p.nome) {
+      erro.textContent = "O novo nome é igual ao atual.";
+      return;
+    }
+
+    // Só muda o nome depois de confirmar a senha
+    pedirSenha("Senha para editar o nome", function () {
+      p.nome = novo;
+      salvar();
+      render();
+      fecharNome();
+      mostrarAviso("Nome alterado para: " + novo);
+    });
+  }
+
   /* ---------- Histórico (aba lateral) ---------- */
 
   function trocarAba(aba) {
@@ -1182,6 +1234,14 @@ var CHAVE = "estoque_produtos";
     if (e.target === this) fecharModal();
   });
 
+  document.getElementById("modalnome").addEventListener("click", function (e) {
+    if (e.target === this) fecharNome();
+  });
+
+  document.getElementById("novonome").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") confirmarNome();
+  });
+
   document.getElementById("modalsenha").addEventListener("click", function (e) {
     if (e.target === this) fecharSenha();
   });
@@ -1215,6 +1275,7 @@ var CHAVE = "estoque_produtos";
         return;
       }
       fecharModal();
+      fecharNome();
       fecharHistorico();
       fecharExcluir();
       fecharPainelAlerta();

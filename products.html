@@ -277,6 +277,25 @@
   </div>
 </div>
 
+<!-- Janela de editar nome (sobreposição) -->
+<div id="modalnome" class="modal-fundo">
+  <div class="modal-caixa">
+    <h2>Editar nome</h2>
+
+    <p id="nomeatual"></p>
+
+    <label for="novonome">Novo nome:</label>
+    <input id="novonome" type="text">
+
+    <p id="erronome" style="color:#d9534f;font-weight:bold;margin:0;min-height:18px;"></p>
+
+    <div class="modal-botoes">
+      <button type="button" class="btn-entrada" onclick="confirmarNome()">Salvar nome</button>
+      <button type="button" class="btn-cancelar" onclick="fecharNome()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Janela de senha (sobreposição) -->
 <div id="modalsenha" class="modal-fundo">
   <div class="modal-caixa">
